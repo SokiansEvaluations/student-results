@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dharmsoka College Term Test Results</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- D3.js CDN for charts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        /* Custom scrollbar for table container */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Fade-in animation for modal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        /* Styles for D3 charts */
+        .chart-container {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 1.5rem;
+            width: 100%;
+            overflow-x: auto; /* Ensure charts are scrollable if wide */
+        }
+        .chart-container h3 {
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .bar {
+            fill: teal;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #d1d5db; /* Light gray for axes */
+            shape-rendering: crispEdges;
+        }
+        .x-axis text,
+        .y-axis text {
+            font-size: 0.75rem;
+            fill: #4b5563; /* Darker gray for axis labels */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-xl">
+        <!-- School Logo (placed above the main heading) -->
+        <img src="image_7ce0f6.png" alt="Dharmasoka College Logo" class="h-24 w-24 object-contain rounded-full mx-auto mb-6 border-4 border-indigo-400 p-1">
+
+        <!-- School Header Section -->
+        <div class="flex flex-col sm:flex-row items-center justify-center mb-8 p-4 bg-indigo-100 rounded-lg shadow-md">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-800">Dharmasoka College Term Test Results</h1>
+        </div>
+
+        <!-- Student Search Section (Now above Login) -->
+        <div class="mb-6 p-6 bg-blue-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-blue-600 mb-4 text-center">Student Result Lookup</h2>
+            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-lg mx-auto">
+                <input type="text" id="studentIndexInput" placeholder="Enter Student Index Number..."
+                       class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                <button id="lookupResultBtn"
+                        class="w-full sm:w-auto bg-blue-600 text-white p-3 rounded-md font-semibold hover:bg-blue-700 transition duration-150 ease-in-out shadow-lg">
+                    Show Result
+                </button>
+            </div>
+            <p id="studentLookupMessage" class="text-red-500 text-center mt-2"></p>
+        </div>
+
+        <!-- Login Section (Moved below Student Search) -->
+        <div id="loginSection" class="mb-8 p-6 bg-indigo-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-4 text-center">Login</h2>
+            <div class="flex flex-col space-y-4 max-w-sm mx-auto">
+                <input type="text" id="usernameInput" placeholder="Username (e.g., teacher_admin)"
+                       class="p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                <input type="password" id="passwordInput" placeholder="Password (e.g., SecureP@ss2026!)"
+                       class="p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                <button id="loginBtn"
+                        class="bg-indigo-600 text-white p-3 rounded-md font-semibold hover:bg-indigo-700 transition duration-150 ease-in-out shadow-lg">
+                    Teacher Login
+                </button>
+                <p id="loginMessage" class="text-red-500 text-center"></p>
+            </div>
+        </div>
+
+        <!-- Teacher Dashboard Section (Hidden by default, shown after login) -->
+        <div id="teacherDashboard" class="hidden">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-center text-teal-700 mb-8">Teacher Dashboard</h2>
+
+            <!-- Marks Analysis Section -->
+            <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
+                <h3 class="text-2xl font-bold text-green-700 mb-4 text-center">Overall Marks Analysis</h3>
+                <div id="analysisSummary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+                    <!-- Analysis data will be injected here -->
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="chart-container">
+                    <h3>Average Subject Marks</h3>
+                    <div id="subjectAveragesChart" class="flex justify-center items-center h-64"></div>
+                </div>
+                <div class="chart-container">
+                    <h3>Student Distribution by Stream</h3>
+                    <div id="streamDistributionChart" class="flex justify-center items-center h-64"></div>
+                </div>
+            </div>
+
+            <!-- Top Performers Section -->
+            <div class="mb-8 p-6 bg-yellow-50 rounded-lg shadow-inner">
+                <h3 class="text-2xl font-bold text-yellow-700 mb-4 text-center">Top 3 Performers by Stream (Z-Score)</h3>
+                <div id="topPerformersList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
+                    <!-- Top performers will be injected here -->
+                </div>
+            </div>
+
+            <!-- Result Sheet Heading -->
+            <h3 class="text-2xl font-bold text-gray-700 mb-4 text-center">Grade 12 Mid Term Test Results</h3>
+
+            <!-- Search and Filter Section for Teacher -->
+            <div class="mb-6 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4">
+                <input type="text" id="searchInput" placeholder="Search by Index or Name..."
+                       class="w-full sm:w-2/3 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                <select id="streamFilter"
+                        class="w-full sm:w-1/3 p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                    <option value="">All Streams</option>
+                    <option value="Physical Science">Physical Science</option>
+                    <!-- Add other streams if they appear in data dynamically -->
+                </select>
+            </div>
+
+            <!-- Student Data Table for Teacher -->
+            <div class="overflow-x-auto rounded-lg shadow-md table-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-indigo-600 text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider rounded-tl-lg">Index No.</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Maths Grade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Physics Grade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Chemistry Grade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">ICT Grade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Z-Score</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Class Rank</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider rounded-tr-lg">Section Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Student rows will be injected here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Student Detail Modal -->
+        <div id="studentDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md animate-fade-in-up transform transition-all duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-indigo-700">Grade 12 Mid Term Test</h2>
+                    <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700 text-3xl font-bold">&times;</button>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-4" id="modalStudentName"></h3>
+                <div id="modalStudentDetails" class="space-y-2 text-gray-700">
+                    <!-- Details will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Raw student data from the CSV file
+        // Each object represents a row in the CSV
+        const studentData = [
+            // Note: '*' in ICT column from CSV is replaced with 'N/A' for display.
+            // 'ab' (absent) in subject scores are replaced with 'Absent' for display.
+            // NaN or -10 in Z_score fields are replaced with 'N/A' or 'Not Calculated' for display.
+            { Index_number: "31328", Name: "A.N.Methshan De Zoysa", Maths: "55", Physics: "50", Chemistry: "48", ICT: "N/A", Z_maths: "0.520009246553931", Z_phy: "0.53023575059113448", Z_Chem: "0.5499048184375005", Z_ICT: "", Z_score: "0.53338327186085532", SecRank: "40", ClassRank: "13", Stream: "Physical Science" },
+            { Index_number: "31358", Name: "B.H.Diniru.Dilsara", Maths: "20", Physics: "Absent", Chemistry: "33", ICT: "N/A", Z_maths: "-0.919623260512608", Z_phy: "N/A", Z_Chem: "-0.26547121668237605", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31374", Name: "D.M.Pahan Wickramarathna", Maths: "11", Physics: "41", Chemistry: "26", ICT: "N/A", Z_maths: "-1.2898144766154322", Z_phy: "0.057957933690095616", Z_Chem: "-0.64598003307165186", Z_ICT: "", Z_score: "-0.6259455253323295", SecRank: "101", ClassRank: "28", Stream: "Physical Science" },
+            { Index_number: "31439", Name: "Nadil Thesan Ginige", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31440", Name: "W.G.M.Hansithu Sudathsiri", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31462", Name: "N.G.L.Saditha Nethmira", Maths: "41", Physics: "37", Chemistry: "32", ICT: "N/A", Z_maths: "-0.055843756272684612", Z_phy: "-0.15194331826592167", Z_Chem: "-0.31982961902370116", Z_ICT: "", Z_score: "-0.17587223118743581", SecRank: "76", ClassRank: "20", Stream: "Physical Science" },
+            { Index_number: "31520", Name: "K.P.W.Rumeth Thathmira De Silva", Maths: "87", Physics: "61", Chemistry: "70", ICT: "N/A", Z_maths: "1.8362446815861952", Z_phy: "1.1074641934701821", Z_Chem: "1.7457896699466529", Z_ICT: "", Z_score: "1.563166181667677", SecRank: "6", ClassRank: "4", Stream: "Physical Science" },
+            { Index_number: "31497", Name: "K.M.G. Senuka Lethnura", Maths: "Absent", Physics: "Absent", Chemistry: "25", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "-0.70033843541297691", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31530", Name: "Yasandu Thisath Seenapatabadige", Maths: "81", Physics: "86", Chemistry: "84", ICT: "N/A", Z_maths: "1.5894505375176458", Z_phy: "2.4193470181952903", Z_Chem: "2.5068073027252042", Z_ICT: "", Z_score: "2.1718682861460468", SecRank: "1", ClassRank: "1", Stream: "Physical Science" },
+            { Index_number: "31533", Name: "M.W. Sanuth Nihansa de Silva", Maths: "71", Physics: "59", Chemistry: "45", ICT: "N/A", Z_maths: "1.1781269640700631", Z_phy: "1.0025135674921735", Z_Chem: "0.38682961141352523", Z_ICT: "", Z_score: "0.85582338099192057", SecRank: "23", ClassRank: "6", Stream: "Physical Science" },
+            { Index_number: "32165", Name: "W. Senuth Demitha De Silva", Maths: "23", Physics: "42", Chemistry: "38", ICT: "N/A", Z_maths: "-0.79622618847833326", Z_phy: "0.11043324667909994", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.22649071559166131", SecRank: "80", ClassRank: "22", Stream: "Physical Science" },
+            { Index_number: "34121", Name: "P.A.N. Savindu Kumara", Maths: "68", Physics: "54", Chemistry: "44", ICT: "N/A", Z_maths: "1.0547298920357884", Z_phy: "0.74013700254715176", Z_Chem: "0.33247120907220012", Z_ICT: "", Z_score: "0.70911270121838", SecRank: "30", ClassRank: "9", Stream: "Physical Science" },
+            { Index_number: "34127", Name: "K.D. Thisara Suranjaya", Maths: "75", Physics: "49", Chemistry: "48", ICT: "N/A", Z_maths: "1.342656393449096", Z_phy: "0.47776043760213022", Z_Chem: "0.5499048184375005", Z_ICT: "", Z_score: "0.79010721649624227", SecRank: "28", ClassRank: "8", Stream: "Physical Science" },
+            { Index_number: "34204", Name: "K.T. Sathira Sanhida", Maths: "Absent", Physics: "42", Chemistry: "31", ICT: "N/A", Z_maths: "N/A", Z_phy: "0.11043324667909994", Z_Chem: "-0.37418802136502632", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "34210", Name: "M.P. Menura Sanchala", Maths: "43", Physics: "26", Chemistry: "28", ICT: "N/A", Z_maths: "0.026420958416831907", Z_phy: "-0.72917176114496918", Z_Chem: "-0.53726322838900165", Z_ICT: "", Z_score: "-0.41333801037237966", SecRank: "89", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "34215", Name: "K. Sasmika Sulakshana", Maths: "44", Physics: "61", Chemistry: "52", ICT: "N/A", Z_maths: "0.067553315761590169", Z_phy: "1.1074641934701821", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.6474519790115244", SecRank: "33", ClassRank: "11", Stream: "Physical Science" },
+            { Index_number: "34256", Name: "P.K. Sahan Sandeepa", Maths: "61", Physics: "47", Chemistry: "52", ICT: "N/A", Z_maths: "0.7668033906224806", Z_phy: "0.37280981162412152", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.63565054334980109", SecRank: "35", ClassRank: "12", Stream: "Physical Science" },
+            { Index_number: "34269", Name: "Kaveesha Mihiran Gunasekara", Maths: "45", Physics: "36", Chemistry: "32", ICT: "N/A", Z_maths: "0.10868567310634843", Z_phy: "-0.204418631254926", Z_Chem: "-0.31982961902370116", Z_ICT: "", Z_score: "-0.13852085905742625", SecRank: "74", ClassRank: "19", Stream: "Physical Science" },
+            { Index_number: "34278", Name: "K.B.Janith Shanuka", Maths: "75", Physics: "58", Chemistry: "56", ICT: "N/A", Z_maths: "1.342656393449096", Z_phy: "0.95003825450316914", Z_Chem: "0.98477203716810136", Z_ICT: "", Z_score: "1.0924888950401221", SecRank: "16", ClassRank: "5", Stream: "Physical Science" },
+            { Index_number: "34290", Name: "I.D.L. Mihisal Jayasinghe", Maths: "Absent", Physics: "38", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "-0.099468005276917348", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "34298", Name: "Vidun Methupa Gurusinghe", Maths: "66", Physics: "47", Chemistry: "27", ICT: "N/A", Z_maths: "0.9724651773462718", Z_phy: "0.37280981162412152", Z_Chem: "-0.5916216307303267", Z_ICT: "", Z_score: "0.25121778608002227", SecRank: "50", ClassRank: "14", Stream: "Physical Science" },
+            { Index_number: "2026B22", Name: "G.L.B. Ranidu Niraj", Maths: "Absent", Physics: "30", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "-0.5192705091889519", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "2026B23", Name: "R.P. Anuk Chamathka Kosala", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "2026B24", Name: "I.P.Lesandu Wishad", Maths: "29", Physics: "50", Chemistry: "31", ICT: "N/A", Z_maths: "-0.54943204440978366", Z_phy: "0.53023575059113448", Z_Chem: "-0.37418802136502632", Z_ICT: "", Z_score: "-0.13112810506122516", SecRank: "73", ClassRank: "18", Stream: "Physical Science" },
+            { Index_number: "34416", Name: "N.D.Hasitha Chamod", Maths: "15", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "-1.1252850472363993", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "38319", Name: "M.W.Sithum Yasas", Maths: "90", Physics: "80", Chemistry: "80", ICT: "N/A", Z_maths: "1.95964175362047", Z_phy: "2.1044951402612644", Z_Chem: "2.289373693359904", Z_ICT: "", Z_score: "2.1178368624138795", SecRank: "2", ClassRank: "2", Stream: "Physical Science" },
+            { Index_number: "2026B27", Name: "K.Chanul Desandu", Maths: "37", Physics: "23", Chemistry: "46", ICT: "N/A", Z_maths: "-0.22037318565171765", Z_phy: "-0.88659770011198213", Z_Chem: "0.44118801375485034", Z_ICT: "", Z_score: "-0.22192762400294982", SecRank: "79", ClassRank: "21", Stream: "Physical Science" },
+            { Index_number: "31337", Name: "K.W. Lesanya Sethumdee", Maths: "55", Physics: "Absent", Chemistry: "43", ICT: "N/A", Z_maths: "0.520009246553931", Z_phy: "N/A", Z_Chem: "0.278112806730875", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31376", Name: "U.W.Dulami Nethmini", Maths: "54", Physics: "37", Chemistry: "45", ICT: "N/A", Z_maths: "0.47887688920917276", Z_phy: "-0.15194331826592167", Z_Chem: "0.38682961141352523", Z_ICT: "", Z_score: "0.23792106078559208", SecRank: "53", ClassRank: "15", Stream: "Physical Science" },
+            { Index_number: "31380", Name: "A.G.Sayumi Sithhara", Maths: "50", Physics: "52", Chemistry: "25", ICT: "N/A", Z_maths: "0.31434745983013973", Z_phy: "0.63518637656914312", Z_Chem: "-0.70033843541297691", Z_ICT: "", Z_score: "0.083065133662102", SecRank: "63", ClassRank: "17", Stream: "Physical Science" },
+            { Index_number: "31382", Name: "L Sandithi Methmali Wijeratna", Maths: "31", Physics: "27", Chemistry: "31", ICT: "N/A", Z_maths: "-0.4671673297202672", Z_phy: "-0.67669644815596486", Z_Chem: "-0.37418802136502632", Z_ICT: "", Z_score: "-0.50601726641375278", SecRank: "95", ClassRank: "27", Stream: "Physical Science" },
+            { Index_number: "31392", Name: "J.Sanuli Thathsari Nimanya", Maths: "29", Physics: "Absent", Chemistry: "35", ICT: "N/A", Z_maths: "-0.54943204440978366", Z_phy: "N/A", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31541", Name: "M.G.Chanuli Sahathma", Maths: "3", Physics: "22", Chemistry: "17", ICT: "N/A", Z_maths: "-1.6188733353734983", Z_phy: "-0.93907301310098645", Z_Chem: "-1.1352056541435778", Z_ICT: "", Z_score: "-1.2310506675393542", SecRank: "110", ClassRank: "29", Stream: "Physical Science" },
+            { Index_number: "32171", Name: "M.Sayumi Wimansa Piyumanthi", Maths: "89", Physics: "62", Chemistry: "80", ICT: "N/A", Z_maths: "1.9185093962757118", Z_phy: "1.1599395064591864", Z_Chem: "2.289373693359904", Z_ICT: "", Z_score: "1.7892741986982674", SecRank: "5", ClassRank: "3", Stream: "Physical Science" },
+            { Index_number: "34115", Name: "P.H.Dahami Sandadinudi", Maths: "69", Physics: "57", Chemistry: "46", ICT: "N/A", Z_maths: "1.0958622493805465", Z_phy: "0.89756294151416482", Z_Chem: "0.44118801375485034", Z_ICT: "", Z_score: "0.81153773488318726", SecRank: "26", ClassRank: "7", Stream: "Physical Science" },
+            { Index_number: "34116", Name: "P.Himashi Nethara De Silva", Maths: "56", Physics: "48", Chemistry: "32", ICT: "N/A", Z_maths: "0.56114160389868928", Z_phy: "0.4252851246131259", Z_Chem: "-0.31982961902370116", Z_ICT: "", Z_score: "0.222199036496038", SecRank: "54", ClassRank: "16", Stream: "Physical Science" },
+            { Index_number: "34128", Name: "G.M.H. Prarthana Nethsarani", Maths: "25", Physics: "28", Chemistry: "36", ICT: "N/A", Z_maths: "-0.71396147378881669", Z_phy: "-0.62422113516696054", Z_Chem: "-0.10239600965840076", Z_ICT: "", Z_score: "-0.48019287287139262", SecRank: "94", ClassRank: "26", Stream: "Physical Science" },
+            { Index_number: "34183", Name: "W.L.Livini Menara", Maths: "63", Physics: "49", Chemistry: "51", ICT: "N/A", Z_maths: "0.84906810531199706", Z_phy: "0.47776043760213022", Z_Chem: "0.71298002546147587", Z_ICT: "", Z_score: "0.6799361894585344", SecRank: "31", ClassRank: "10", Stream: "Physical Science" },
+            { Index_number: "34196", Name: "W.Maleesha Dewmini", Maths: "38", Physics: "24", Chemistry: "32", ICT: "N/A", Z_maths: "-0.17924082830695939", Z_phy: "-0.83412238712297782", Z_Chem: "-0.31982961902370116", Z_ICT: "", Z_score: "-0.4443976114845461", SecRank: "90", ClassRank: "25", Stream: "Physical Science" },
+            { Index_number: "34284", Name: "P.H.Dilmi Thashmila Seneviratna", Maths: "37", Physics: "26", Chemistry: "39", ICT: "N/A", Z_maths: "-0.22037318565171765", Z_phy: "-0.72917176114496918", Z_Chem: "0.060679197365574568", Z_ICT: "", Z_score: "-0.29628858314370404", SecRank: "82", ClassRank: "23", Stream: "Physical Science" },
+            { Index_number: "34223", Name: "K.W. Dahami Diwyanjali", Maths: "35", Physics: "Absent", Chemistry: "35", ICT: "N/A", Z_maths: "-0.30263790034123417", Z_phy: "N/A", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "31323", Name: "M.K.Dineth Sumiyuru", Maths: "3", Physics: "37", Chemistry: "37", ICT: "N/A", Z_maths: "-1.6188733353734983", Z_phy: "-0.15194331826592167", Z_Chem: "-0.048037607317075647", Z_ICT: "", Z_score: "-0.60628475365216516", SecRank: "100", ClassRank: "27", Stream: "Physical Science" },
+            { Index_number: "31326", Name: "K.Kaveesh Pramuditha", Maths: "49", Physics: "51", Chemistry: "52", ICT: "N/A", Z_maths: "0.27321510248538144", Z_phy: "0.5827110635801388", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.541088197956107", SecRank: "39", ClassRank: "11", Stream: "Physical Science" },
+            { Index_number: "31367", Name: "Dinuka Prabhasara Milewithachchi", Maths: "21", Physics: "45", Chemistry: "38", ICT: "N/A", Z_maths: "-0.87849090316784972", Z_phy: "0.26785918564611289", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.20143697416582915", SecRank: "78", ClassRank: "23", Stream: "Physical Science" },
+            { Index_number: "31447", Name: "D.H.Thilan Damsara Karunaratna", Maths: "0", Physics: "40", Chemistry: "30", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "0.0054826207010912949", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.72177807013767781", SecRank: "107", ClassRank: "28", Stream: "Physical Science" },
+            { Index_number: "31450", Name: "V.Sanuka Udan Kariyawasam", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31454", Name: "J.Thiviru Kenula Kariyawasam", Maths: "70", Physics: "83", Chemistry: "76", ICT: "N/A", Z_maths: "1.1369946067253049", Z_phy: "2.2619210792282773", Z_Chem: "2.0719400839946034", Z_ICT: "", Z_score: "1.8236185899827284", SecRank: "3", ClassRank: "1", Stream: "Physical Science" },
+            { Index_number: "31529", Name: "P.H.Tharuka Dilum", Maths: "32", Physics: "52", Chemistry: "56", ICT: "N/A", Z_maths: "-0.42603497237550891", Z_phy: "0.63518637656914312", Z_Chem: "0.98477203716810136", Z_ICT: "", Z_score: "0.39797448045391182", SecRank: "45", ClassRank: "13", Stream: "Physical Science" },
+            { Index_number: "31531", Name: "Nikhila Pasan Weerasinghe", Maths: "69", Physics: "57", Chemistry: "46", ICT: "N/A", Z_maths: "1.0958622493805465", Z_phy: "0.89756294151416482", Z_Chem: "0.44118801375485034", Z_ICT: "", Z_score: "0.81153773488318726", SecRank: "26", ClassRank: "9", Stream: "Physical Science" },
+            { Index_number: "31532", Name: "P.H.Sadaham Thisil Pabasara", Maths: "67", Physics: "52", Chemistry: "54", ICT: "N/A", Z_maths: "1.01359753469103", Z_phy: "0.63518637656914312", Z_Chem: "0.87605523248545114", Z_ICT: "", Z_score: "0.84161304791520808", SecRank: "25", ClassRank: "8", Stream: "Physical Science" },
+            { Index_number: "31535", Name: "M.H.Damsara Movindul", Maths: "33", Physics: "52", Chemistry: "50", ICT: "N/A", Z_maths: "-0.38490261503075068", Z_phy: "0.63518637656914312", Z_Chem: "0.65862162312015071", Z_ICT: "", Z_score: "0.30296846155284768", SecRank: "48", ClassRank: "14", Stream: "Physical Science" },
+            { Index_number: "31540", Name: "W.A.Matheesha Bimsara de Silva", Maths: "52", Physics: "30", Chemistry: "35", ICT: "N/A", Z_maths: "0.39661217451965625", Z_phy: "-0.5192705091889519", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "-0.093137582223007165", SecRank: "69", ClassRank: "20", Stream: "Physical Science" },
+            { Index_number: "32184", Name: "P.W.Ushan Induwara", Maths: "31", Physics: "27", Chemistry: "38", ICT: "N/A", Z_maths: "-0.4671673297202672", Z_phy: "-0.67669644815596486", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.37918099428399415", SecRank: "88", ClassRank: "25", Stream: "Physical Science" },
+            { Index_number: "34119", Name: "M.G.Dulina Sithmira", Maths: "21", Physics: "45", Chemistry: "40", ICT: "N/A", Z_maths: "-0.87849090316784972", Z_phy: "0.26785918564611289", Z_Chem: "0.11503759970689968", Z_ICT: "", Z_score: "-0.16519803927161239", SecRank: "75", ClassRank: "22", Stream: "Physical Science" },
+            { Index_number: "34189", Name: "S.M.Nethum Kaveesha de Silva", Maths: "60", Physics: "54", Chemistry: "35", ICT: "N/A", Z_maths: "0.72567103327772231", Z_phy: "0.74013700254715176", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "0.43635120794171606", SecRank: "44", ClassRank: "12", Stream: "Physical Science" },
+            { Index_number: "34205", Name: "I.D.Amesh Nimsara Sandeep", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "34216", Name: "M.Yoshith Maleesha", Maths: "17", Physics: "30", Chemistry: "47", ICT: "N/A", Z_maths: "-1.0430203325468828", Z_phy: "-0.5192705091889519", Z_Chem: "0.49554641609617545", Z_ICT: "", Z_score: "-0.35558147521321981", SecRank: "86", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "34219", Name: "T.M.Thesath Ranthisa Thelwadana", Maths: "67", Physics: "71", Chemistry: "62", ICT: "N/A", Z_maths: "1.01359753469103", Z_phy: "1.6322173233602253", Z_Chem: "1.310922451216052", Z_ICT: "", Z_score: "1.3189124364224358", SecRank: "11", ClassRank: "3", Stream: "Physical Science" },
+            { Index_number: "34235", Name: "H.G.Amindu Lakshan", Maths: "45", Physics: "35", Chemistry: "38", ICT: "N/A", Z_maths: "0.10868567310634843", Z_phy: "-0.25689394424393031", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.047295825371110815", SecRank: "67", ClassRank: "19", Stream: "Physical Science" },
+            { Index_number: "34299", Name: "G.A.Umindu Itheshika", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "38320", Name: "K.B.G.Vihaga Chamathkara Arunod", Maths: "53", Physics: "62", Chemistry: "55", ICT: "N/A", Z_maths: "0.43774453186441448", Z_phy: "1.1599395064591864", Z_Chem: "0.9304136348267763", Z_ICT: "", Z_score: "0.842699224383459", SecRank: "24", ClassRank: "7", Stream: "Physical Science" },
+            { Index_number: "31363", Name: "E.H.Lochana Sulakshana", Maths: "61", Physics: "43", Chemistry: "31", ICT: "N/A", Z_maths: "0.7668033906224806", Z_phy: "0.16290855966810427", Z_Chem: "-0.37418802136502632", Z_ICT: "", Z_score: "0.18517464297518615", SecRank: "55", ClassRank: "16", Stream: "Physical Science" },
+            { Index_number: "31321", Name: "Liyana PathiranaRovin Thamuditha", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31329", Name: "Dunitha Hansana Amarasinghe", Maths: "74", Physics: "58", Chemistry: "59", ICT: "N/A", Z_maths: "1.3015240361043379", Z_phy: "0.95003825450316914", Z_Chem: "1.1478472441920768", Z_ICT: "", Z_score: "1.1331365115998613", SecRank: "13", ClassRank: "4", Stream: "Physical Science" },
+            { Index_number: "31330", Name: "Duvindu Ransana Amarasinghe", Maths: "68", Physics: "64", Chemistry: "70", ICT: "N/A", Z_maths: "1.0547298920357884", Z_phy: "1.2648901324371951", Z_Chem: "1.7457896699466529", Z_ICT: "", Z_score: "1.3551365648065454", SecRank: "9", ClassRank: "2", Stream: "Physical Science" },
+            { Index_number: "31447", Name: "Bosilu Indeepa Wadumesthree", Maths: "47", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "0.19095038779586493", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.3206260016697737", SecRank: "111", ClassRank: "30", Stream: "Physical Science" },
+            { Index_number: "34272", Name: "O.K.D.Hiruka Methnula", Maths: "6", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.4954762633392236", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.8827682187148032", SecRank: "115", ClassRank: "33", Stream: "Physical Science" },
+            { Index_number: "2026C30", Name: "H.Gayaru Dulsara Fernando", Maths: "40", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-0.096976113617442863", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.4166015021408764", SecRank: "112", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "38322", Name: "W.Anuda Mindinu Umavin", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31381", Name: "W.Tharuka Gimhani", Maths: "67", Physics: "40", Chemistry: "54", ICT: "N/A", Z_maths: "1.01359753469103", Z_phy: "0.0054826207010912949", Z_Chem: "0.87605523248545114", Z_ICT: "", Z_score: "0.6317117959591908", SecRank: "36", ClassRank: "10", Stream: "Physical Science" },
+            { Index_number: "31436", Name: "H.Mihili Nirmaani Fernando", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31460", Name: "A.Janudi Himasara de Zoysa", Maths: "47", Physics: "42", Chemistry: "35", ICT: "N/A", Z_maths: "0.19095038779586493", Z_phy: "0.11043324667909994", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "0.048209740825079665", SecRank: "65", ClassRank: "18", Stream: "Physical Science" },
+            { Index_number: "31502", Name: "S.Thenuri Nawanjana Senaratna", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31557", Name: "H.K.T.Thewanya Dilmini", Maths: "44", Physics: "37", Chemistry: "54", ICT: "N/A", Z_maths: "0.067553315761590169", Z_phy: "-0.15194331826592167", Z_Chem: "0.87605523248545114", Z_ICT: "", Z_score: "0.26388840999370655", SecRank: "49", ClassRank: "15", Stream: "Physical Science" },
+            { Index_number: "32160", Name: "U.Tanuli Levanya", Maths: "15", Physics: "29", Chemistry: "37", ICT: "N/A", Z_maths: "-1.1252850472363993", Z_phy: "-0.57174582217795622", Z_Chem: "-0.048037607317075647", Z_ICT: "", Z_score: "-0.58168949224381039", SecRank: "99", ClassRank: "26", Stream: "Physical Science" },
+            { Index_number: "34123", Name: "A.Dewindi Saubhagya Sahabandu", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "34133", Name: "A.Nipuni Nayanarathna", Maths: "49", Physics: "37", Chemistry: "42", ICT: "N/A", Z_maths: "0.27321510248538144", Z_phy: "-0.15194331826592167", Z_Chem: "0.22375440438954988", Z_ICT: "", Z_score: "0.11500872953633656", SecRank: "60", ClassRank: "17", Stream: "Physical Science" },
+            { Index_number: "34142", Name: "S.A.Dewmini Dhara", Maths: "75", Physics: "52", Chemistry: "54", ICT: "N/A", Z_maths: "1.342656393449096", Z_phy: "0.63518637656914312", Z_Chem: "0.87605523248545114", Z_ICT: "", Z_score: "0.95129933416789692", SecRank: "19", ClassRank: "5", Stream: "Physical Science" },
+            { Index_number: "34153", Name: "H.Thewni Thilakaratna", Maths: "6", Physics: "23", Chemistry: "24", ICT: "N/A", Z_maths: "-1.4954762633392236", Z_phy: "-0.88659770011198213", Z_Chem: "-0.75469683775430207", Z_ICT: "", Z_score: "-1.0455902670685024", SecRank: "109", ClassRank: "29", Stream: "Physical Science" },
+            { Index_number: "34211", Name: "K.B.Kawya Sathsarani", Maths: "62", Physics: "21", Chemistry: "36", ICT: "N/A", Z_maths: "0.80793574796723877", Z_phy: "-0.99154832608999077", Z_Chem: "-0.10239600965840076", Z_ICT: "", Z_score: "-0.095336195927050935", SecRank: "70", ClassRank: "21", Stream: "Physical Science" },
+            { Index_number: "34233", Name: "K.D.Medhavi Pabasara Wijerathne", Maths: "78", Physics: "62", Chemistry: "41", ICT: "N/A", Z_maths: "1.466053465483371", Z_phy: "1.1599395064591864", Z_Chem: "0.16939600204822478", Z_ICT: "", Z_score: "0.93179632466359408", SecRank: "20", ClassRank: "6", Stream: "Physical Science" },
+            { Index_number: "34237", Name: "H.D.Thehara Hasindi Fernando", Maths: "0", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-1.7422704074077733", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.96503293340432", SecRank: "116", ClassRank: "34", Stream: "Physical Science" },
+            { Index_number: "31461", Name: "J.W.Kavindi Dinushika", Maths: "20", Physics: "0", Chemistry: "0", ICT: "N/A", Z_maths: "-0.919623260512608", Z_phy: "-2.0935298988590816", Z_Chem: "-2.0592984939461045", Z_ICT: "", Z_score: "-1.690817217772598", SecRank: "114", ClassRank: "32", Stream: "Physical Science" },
+            { Index_number: "31315", Name: "Kaveen Hakash", Maths: "31", Physics: "26", Chemistry: "31", ICT: "N/A", Z_maths: "-0.4671673297202672", Z_phy: "-0.72917176114496918", Z_Chem: "-0.37418802136502632", Z_ICT: "", Z_score: "-0.52350903741008759", SecRank: "97", ClassRank: "25", Stream: "Physical Science" },
+            { Index_number: "31322", Name: "Thenura Pasandul Samarawe", Maths: "54", Physics: "54", Chemistry: "52", ICT: "N/A", Z_maths: "0.47887688920917276", Z_phy: "0.74013700254715176", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.66211743985304183", SecRank: "32", ClassRank: "7", Stream: "Physical Science" },
+            { Index_number: "31365", Name: "Anuk Uthsara Weerasinghe", Maths: "5", Physics: "34", Chemistry: "34", ICT: "N/A", Z_maths: "-1.536608620683982", Z_phy: "-0.30936925723293462", Z_Chem: "-0.21111281434105097", Z_ICT: "", Z_score: "-0.68569689741932249", SecRank: "105", ClassRank: "27", Stream: "Physical Science" },
+            { Index_number: "31412", Name: "Sakith Sandew", Maths: "14", Physics: "25", Chemistry: "35", ICT: "N/A", Z_maths: "-1.1664174045811575", Z_phy: "-0.7816470741339735", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "-0.70160629690495224", SecRank: "106", ClassRank: "28", Stream: "Physical Science" },
+            { Index_number: "31413", Name: "Chalukya Deegayu Wijesinghe", Maths: "71", Physics: "62", Chemistry: "46", ICT: "N/A", Z_maths: "1.1781269640700631", Z_phy: "1.1599395064591864", Z_Chem: "0.44118801375485034", Z_ICT: "", Z_score: "0.92641816142803346", SecRank: "21", ClassRank: "5", Stream: "Physical Science" },
+            { Index_number: "31446", Name: "Dhanushka Alwis", Maths: "Absent", Physics: "29", Chemistry: "26", ICT: "N/A", Z_maths: "N/A", Z_phy: "-0.57174582217795622", Z_Chem: "-0.64598003307165186", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "31484", Name: "Nesandu Niduwara Ekanayke", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "31593", Name: "Lithum Mandew", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "32104", Name: "Thasiru Tharinda", Maths: "77", Physics: "68", Chemistry: "70", ICT: "N/A", Z_maths: "1.4249211081386126", Z_phy: "1.4747913843932123", Z_Chem: "1.7457896699466529", Z_ICT: "", Z_score: "1.5485007208261594", SecRank: "7", ClassRank: "1", Stream: "Physical Science" },
+            { Index_number: "34164", Name: "Hansaka Deneth", Maths: "66", Physics: "56", Chemistry: "65", ICT: "N/A", Z_maths: "0.9724651773462718", Z_phy: "0.84508762852516039", Z_Chem: "1.4739976582400274", Z_ICT: "", Z_score: "1.0971834880371532", SecRank: "15", ClassRank: "4", Stream: "Physical Science" },
+            { Index_number: "34172", Name: "Basuru Nethum Rathnayake", Maths: "10", Physics: "20", Chemistry: "30", ICT: "N/A", Z_maths: "-1.3309468339601906", Z_phy: "-1.0440236390789952", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.93450563224851246", SecRank: "108", ClassRank: "29", Stream: "Physical Science" },
+            { Index_number: "34212", Name: "Kasun Eranga", Maths: "65", Physics: "58", Chemistry: "39", ICT: "N/A", Z_maths: "0.93133282000151363", Z_phy: "0.95003825450316914", Z_Chem: "0.060679197365574568", Z_ICT: "", Z_score: "0.64735009062341908", SecRank: "34", ClassRank: "8", Stream: "Physical Science" },
+            { Index_number: "34218", Name: "Sanuka Thathsilu", Maths: "44", Physics: "41", Chemistry: "29", ICT: "N/A", Z_maths: "0.067553315761590169", Z_phy: "0.057957933690095616", Z_Chem: "-0.48290482604767654", Z_ICT: "", Z_score: "-0.11913119219866358", SecRank: "72", ClassRank: "19", Stream: "Physical Science" },
+            { Index_number: "35044", Name: "Sethila Nimnaka De Silva", Maths: "46", Physics: "43", Chemistry: "26", ICT: "N/A", Z_maths: "0.14981803045110667", Z_phy: "0.16290855966810427", Z_Chem: "-0.64598003307165186", Z_ICT: "", Z_score: "-0.11108448098414697", SecRank: "71", ClassRank: "18", Stream: "Physical Science" },
+            { Index_number: "36848", Name: "Pathidu Damsara Shanthapriya", Maths: "Absent", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "38903", Name: "Chamindu Kaushalya", Maths: "70", Physics: "44", Chemistry: "38", ICT: "N/A", Z_maths: "1.1369946067253049", Z_phy: "0.21538387265710859", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "0.45289975813555433", SecRank: "42", ClassRank: "9", Stream: "Physical Science" },
+            { Index_number: "34203", Name: "Dithira Dewmila", Maths: "20", Physics: "30", Chemistry: "N/A", ICT: "63", Z_maths: "-0.919623260512608", Z_phy: "-0.5192705091889519", Z_Chem: "N/A", Z_ICT: "0.027188590942211554", Z_score: "Exclude", SecRank: "-0.47056839291978281", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "34188", Name: "Malindu Seneshka", Maths: "15", Physics: "Absent", Chemistry: "N/A", ICT: "58", Z_maths: "-1.1252850472363993", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "-0.33532595495394252", Z_score: "Exclude", SecRank: "Not Calculated", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "31343", Name: "Sinethma Kasundi", Maths: "57", Physics: "42", Chemistry: "33", ICT: "N/A", Z_maths: "0.60227396124344756", Z_phy: "0.11043324667909994", Z_Chem: "-0.26547121668237605", Z_ICT: "", Z_score: "0.14907866374672382", SecRank: "58", ClassRank: "15", Stream: "Physical Science" },
+            { Index_number: "31349", Name: "Demindi Methsara", Maths: "48", Physics: "30", Chemistry: "Absent", ICT: "N/A", Z_maths: "0.23208274514062319", Z_phy: "-0.5192705091889519", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "31351", Name: "Nethindi Nimnara Deshapriya", Maths: "43", Physics: "Absent", Chemistry: "Absent", ICT: "N/A", Z_maths: "0.026420958416831907", Z_phy: "N/A", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "31388", Name: "Kavidi Omaya", Maths: "8", Physics: "Absent", Chemistry: "19", ICT: "N/A", Z_maths: "-1.4132115486497072", Z_phy: "N/A", Z_Chem: "-1.0264888494609277", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "31", Stream: "Physical Science" },
+            { Index_number: "31465", Name: "Sethuki Vinethra", Maths: "18", Physics: "28", Chemistry: "30", ICT: "N/A", Z_maths: "-1.0018879752021246", Z_phy: "-0.62422113516696054", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.68488517802514559", SecRank: "104", ClassRank: "26", Stream: "Physical Science" },
+            { Index_number: "31682", Name: "Nadithi Pahanya De Silva", Maths: "75", Physics: "74", Chemistry: "57", ICT: "N/A", Z_maths: "1.342656393449096", Z_phy: "1.7896432623272382", Z_Chem: "1.0391304395094265", Z_ICT: "", Z_score: "1.3904766984285868", SecRank: "8", ClassRank: "2", Stream: "Physical Science" },
+            { Index_number: "32167", Name: "Samudi Punsara", Maths: "49", Physics: "32", Chemistry: "30", ICT: "N/A", Z_maths: "0.27321510248538144", Z_phy: "-0.41431988321094326", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.18988373481063778", SecRank: "77", ClassRank: "20", Stream: "Physical Science" },
+            { Index_number: "34168", Name: "Thavishi Thathsara", Maths: "55", Physics: "55", Chemistry: "63", ICT: "N/A", Z_maths: "0.520009246553931", Z_phy: "0.79261231553615608", Z_Chem: "1.3652808535573773", Z_ICT: "", Z_score: "0.89263413854915485", SecRank: "22", ClassRank: "6", Stream: "Physical Science" },
+            { Index_number: "34187", Name: "Mahimi Nimna", Maths: "67", Physics: "41", Chemistry: "28", ICT: "N/A", Z_maths: "1.01359753469103", Z_phy: "0.057957933690095616", Z_Chem: "-0.53726322838900165", Z_ICT: "", Z_score: "0.17809741333070803", SecRank: "57", ClassRank: "14", Stream: "Physical Science" },
+            { Index_number: "34214", Name: "Imani Ridmika", Maths: "76", Physics: "67", Chemistry: "61", ICT: "N/A", Z_maths: "1.3837887507938544", Z_phy: "1.422316071404208", Z_Chem: "1.2565640488747269", Z_ICT: "", Z_score: "1.3542229570242632", SecRank: "10", ClassRank: "3", Stream: "Physical Science" },
+            { Index_number: "34244", Name: "Poorni Dhanushka", Maths: "70", Physics: "43", Chemistry: "35", ICT: "N/A", Z_maths: "1.1369946067253049", Z_phy: "0.16290855966810427", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "0.38104958479789447", SecRank: "46", ClassRank: "10", Stream: "Physical Science" },
+            { Index_number: "34259", Name: "Lithumi Naveesha Rathnayake", Maths: "33", Physics: "32", Chemistry: "28", ICT: "N/A", Z_maths: "-0.38490261503075068", Z_phy: "-0.41431988321094326", Z_Chem: "-0.53726322838900165", Z_ICT: "", Z_score: "-0.4454952422102319", SecRank: "91", ClassRank: "23", Stream: "Physical Science" },
+            { Index_number: "34296", Name: "Dilmini Chameesha", Maths: "49", Physics: "42", Chemistry: "36", ICT: "N/A", Z_maths: "0.27321510248538144", Z_phy: "0.11043324667909994", Z_Chem: "-0.10239600965840076", Z_ICT: "", Z_score: "0.093750779835360218", SecRank: "62", ClassRank: "17", Stream: "Physical Science" },
+            { Index_number: "38318", Name: "Damsadi Nadithya", Maths: "42", Physics: "58", Chemistry: "38", ICT: "N/A", Z_maths: "-0.014711398927926351", Z_phy: "0.95003825450316914", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "0.31388255019983075", SecRank: "47", ClassRank: "11", Stream: "Physical Science" },
+            { Index_number: "31375", Name: "Gayathmi Hansika Mendis", Maths: "26", Physics: "36", Chemistry: "N/A", ICT: "79", Z_maths: "-0.67282911644405852", Z_phy: "-0.204418631254926", Z_Chem: "N/A", Z_ICT: "1.1872351378099046", Z_score: "Exclude", SecRank: "0.10332913003697337", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "31425", Name: "Dasuni Aloka", Maths: "47", Physics: "35", Chemistry: "N/A", ICT: "51", Z_maths: "0.19095038779586493", Z_phy: "-0.25689394424393031", Z_Chem: "N/A", Z_ICT: "-0.84284631920855824", Z_score: "Exclude", SecRank: "-0.30292995855220789", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "31517", Name: "Nethmi Sathsarani", Maths: "43", Physics: "39", Chemistry: "N/A", ICT: "73", Z_maths: "0.026420958416831907", Z_phy: "-0.046992692287913029", Z_Chem: "N/A", Z_ICT: "0.75221768273451972", Z_score: "Exclude", SecRank: "0.24388198295447952", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "31683", Name: "Vibhavi Wimansa", Maths: "3", Physics: "18", Chemistry: "N/A", ICT: "34", Z_maths: "-1.6188733353734983", Z_phy: "-1.1489742650570038", Z_Chem: "N/A", Z_ICT: "-2.0753957752554819", Z_score: "Exclude", SecRank: "-1.6144144585619948", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "34153", Name: "Vinuki Nethsara", Maths: "24", Physics: "30", Chemistry: "N/A", ICT: "69", Z_maths: "-0.755093831133575", Z_phy: "-0.5192705091889519", Z_Chem: "N/A", Z_ICT: "0.46220604601759646", Z_score: "Exclude", SecRank: "-0.27071943143497679", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "34228", Name: "Shalani Nudara De Silva", Maths: "39", Physics: "41", Chemistry: "N/A", ICT: "74", Z_maths: "-0.13810847096220114", Z_phy: "0.057957933690095616", Z_Chem: "N/A", Z_ICT: "0.82472059191375047", Z_score: "Exclude", SecRank: "0.24819001821388165", ClassRank: "N/A", Stream: "Physical Science" },
+            { Index_number: "31562", Name: "A.G.Usara Insaree", Maths: "65", Physics: "68", Chemistry: "47", ICT: "N/A", Z_maths: "0.93133282000151363", Z_phy: "1.4747913843932123", Z_Chem: "0.49554641609617545", Z_ICT: "", Z_score: "0.96722354016363388", SecRank: "18", ClassRank: "5", Stream: "Physical Science" },
+            { Index_number: "31334", Name: "I.P.Ravindi De Silva", Maths: "28", Physics: "29", Chemistry: "39", ICT: "N/A", Z_maths: "-0.590564401754542", Z_phy: "-0.57174582217795622", Z_Chem: "0.060679197365574568", Z_ICT: "", Z_score: "-0.36721034218897453", SecRank: "87", ClassRank: "18", Stream: "Physical Science" },
+            { Index_number: "38321", Name: "D.Akarshana Devindi", Maths: "78", Physics: "40", Chemistry: "52", ICT: "N/A", Z_maths: "1.466053465483371", Z_phy: "0.0054826207010912949", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.74629150466242111", SecRank: "29", ClassRank: "6", Stream: "Physical Science" },
+            { Index_number: "34136", Name: "K.H.Shashini Bhagya", Maths: "49", Physics: "56", Chemistry: "52", ICT: "N/A", Z_maths: "0.27321510248538144", Z_phy: "0.84508762852516039", Z_Chem: "0.76733842780280093", Z_ICT: "", Z_score: "0.6285470529377809", SecRank: "37", ClassRank: "7", Stream: "Physical Science" },
+            { Index_number: "31543", Name: "Tuvini Sayurangi Ipalhewa", Maths: "52", Physics: "54", Chemistry: "48", ICT: "N/A", Z_maths: "0.39661217451965625", Z_phy: "0.74013700254715176", Z_Chem: "0.5499048184375005", Z_ICT: "", Z_score: "0.56221799850143617", SecRank: "38", ClassRank: "8", Stream: "Physical Science" },
+            { Index_number: "34166", Name: "A.Dewmi Amanda", Maths: "42", Physics: "39", Chemistry: "36", ICT: "N/A", Z_maths: "-0.014711398927926351", Z_phy: "-0.046992692287913029", Z_Chem: "-0.10239600965840076", Z_ICT: "", Z_score: "-0.054700033624746715", SecRank: "68", ClassRank: "15", Stream: "Physical Science" },
+            { Index_number: "34170", Name: "A.G.Vinuri Yashodhani", Maths: "54", Physics: "37", Chemistry: "42", ICT: "N/A", Z_maths: "0.47887688920917276", Z_phy: "-0.15194331826592167", Z_Chem: "0.22375440438954988", Z_ICT: "", Z_score: "0.183562658444267", SecRank: "56", ClassRank: "11", Stream: "Physical Science" },
+            { Index_number: "34165", Name: "M.W.Senuki Sinelya", Maths: "80", Physics: "58", Chemistry: "58", ICT: "N/A", Z_maths: "1.5483181801728874", Z_phy: "0.95003825450316914", Z_Chem: "1.0934888418507516", Z_ICT: "", Z_score: "1.1972817588422693", SecRank: "12", ClassRank: "2", Stream: "Physical Science" },
+            { Index_number: "34190", Name: "Chamathka Venushi", Maths: "25", Physics: "23", Chemistry: "30", ICT: "N/A", Z_maths: "-0.71396147378881669", Z_phy: "-0.88659770011198213", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.6763685325357166", SecRank: "103", ClassRank: "23", Stream: "Physical Science" },
+            { Index_number: "34274", Name: "B.A.Chanumi Aganya", Maths: "24", Physics: "34", Chemistry: "38", ICT: "N/A", Z_maths: "-0.755093831133575", Z_phy: "-0.30936925723293462", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.35271409778075341", SecRank: "85", ClassRank: "17", Stream: "Physical Science" },
+            { Index_number: "31505", Name: "A.B.Sahansa Ovindi", Maths: "52", Physics: "41", Chemistry: "54", ICT: "N/A", Z_maths: "0.39661217451965625", Z_phy: "0.057957933690095616", Z_Chem: "0.87605523248545114", Z_ICT: "", Z_score: "0.44354178023173435", SecRank: "43", ClassRank: "10", Stream: "Physical Science" },
+            { Index_number: "34175", Name: "K.G.Siluni Nethasha", Maths: "47", Physics: "Absent", Chemistry: "18", ICT: "N/A", Z_maths: "0.19095038779586493", Z_phy: "N/A", Z_Chem: "-1.0808472518022527", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "34163", Name: "K.D.Kaveesha Sumudu", Maths: "53", Physics: "Absent", Chemistry: "30", ICT: "N/A", Z_maths: "0.43774453186441448", Z_phy: "N/A", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "31350", Name: "Rashmi Nuwanthi.E.Arachchi", Maths: "44", Physics: "53", Chemistry: "49", ICT: "N/A", Z_maths: "0.067553315761590169", Z_phy: "0.68766168955814744", Z_Chem: "0.60426322077882566", Z_ICT: "", Z_score: "0.45315940869952104", SecRank: "41", ClassRank: "9", Stream: "Physical Science" },
+            { Index_number: "34285", Name: "K.J.Pravindya Rashini", Maths: "37", Physics: "26", Chemistry: "30", ICT: "N/A", Z_maths: "-0.22037318565171765", Z_phy: "-0.72917176114496918", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "-0.45936379016767942", SecRank: "92", ClassRank: "19", Stream: "Physical Science" },
+            { Index_number: "32673", Name: "A.H.Sudam Sankalpa", Maths: "81", Physics: "80", Chemistry: "70", ICT: "N/A", Z_maths: "1.5894505375176458", Z_phy: "2.1044951402612644", Z_Chem: "1.7457896699466529", Z_ICT: "", Z_score: "1.813245115908521", SecRank: "4", ClassRank: "1", Stream: "Physical Science" },
+            { Index_number: "31355", Name: "M.H.P.Naviru Prabhashwara", Maths: "63", Physics: "63", Chemistry: "61", ICT: "N/A", Z_maths: "0.84906810531199706", Z_phy: "1.2124148194481907", Z_Chem: "1.2565640488747269", Z_ICT: "", Z_score: "1.1060156578783049", SecRank: "14", ClassRank: "3", Stream: "Physical Science" },
+            { Index_number: "38442", Name: "K.G.G.Lakindu Dewnula", Maths: "31", Physics: "34", Chemistry: "35", ICT: "N/A", Z_maths: "-0.4671673297202672", Z_phy: "-0.30936925723293462", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "-0.31109699965097587", SecRank: "84", ClassRank: "16", Stream: "Physical Science" },
+            { Index_number: "34242", Name: "Harsha Gayashan Manamperi", Maths: "36", Physics: "44", Chemistry: "40", ICT: "N/A", Z_maths: "-0.26150554299647588", Z_phy: "0.21538387265710859", Z_Chem: "0.11503759970689968", Z_ICT: "", Z_score: "0.022971976455844131", SecRank: "66", ClassRank: "14", Stream: "Physical Science" },
+            { Index_number: "31493", Name: "K.M.Sandeep Rasanda", Maths: "63", Physics: "35", Chemistry: "35", ICT: "N/A", Z_maths: "0.84906810531199706", Z_phy: "-0.25689394424393031", Z_Chem: "-0.15675441199972587", Z_ICT: "", Z_score: "0.14513991635611365", SecRank: "59", ClassRank: "12", Stream: "Physical Science" },
+            { Index_number: "34155", Name: "H.Thunu Virath Jayakodi", Maths: "44", Physics: "50", Chemistry: "30", ICT: "N/A", Z_maths: "0.067553315761590169", Z_phy: "0.53023575059113448", Z_Chem: "-0.42854642370635143", Z_ICT: "", Z_score: "0.056414214215457746", SecRank: "64", ClassRank: "13", Stream: "Physical Science" },
+            { Index_number: "34132", Name: "Nethum Dilanga", Maths: "10", Physics: "34", Chemistry: "38", ICT: "N/A", Z_maths: "-1.3309468339601906", Z_phy: "-0.30936925723293462", Z_Chem: "0.0063207950242494615", Z_ICT: "", Z_score: "-0.54466509872295865", SecRank: "98", ClassRank: "21", Stream: "Physical Science" },
+            { Index_number: "31314", Name: "P.L.Oshana Athsara", Maths: "24", Physics: "37", Chemistry: "Absent", ICT: "N/A", Z_maths: "-0.755093831133575", Z_phy: "-0.15194331826592167", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "34198", Name: "G.Sathsindu Induwara", Maths: "36", Physics: "37", Chemistry: "Absent", ICT: "N/A", Z_maths: "-0.26150554299647588", Z_phy: "-0.15194331826592167", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "31686", Name: "Thumindu Dewmith Maduwage", Maths: "7", Physics: "43", Chemistry: "33", ICT: "N/A", Z_maths: "-1.4543439059944654", Z_phy: "0.16290855966810427", Z_Chem: "-0.26547121668237605", Z_ICT: "", Z_score: "-0.51896885433624573", SecRank: "96", ClassRank: "20", Stream: "Physical Science" },
+            { Index_number: "36865", Name: "Manuth Lethnura De Silva", Maths: "26", Physics: "32", Chemistry: "21", ICT: "N/A", Z_maths: "-0.67282911644405852", Z_phy: "-0.41431988321094326", Z_Chem: "-0.91777204477827734", Z_ICT: "", Z_score: "-0.66830701481109311", SecRank: "102", ClassRank: "22", Stream: "Physical Science" },
+            { Index_number: "34159", Name: "W.Shamil Yasansala Jayamin", Maths: "72", Physics: "57", Chemistry: "53", ICT: "N/A", Z_maths: "1.2192593214148213", Z_phy: "0.89756294151416482", Z_Chem: "0.82169683014412609", Z_ICT: "", Z_score: "0.97950636435770411", SecRank: "17", ClassRank: "4", Stream: "Physical Science" },
+            { Index_number: "34252", Name: "H.Sithumi Hansalee Rupasinghe", Maths: "Absent", Physics: "58", Chemistry: "49", ICT: "N/A", Z_maths: "N/A", Z_phy: "0.95003825450316914", Z_Chem: "0.60426322077882566", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "34286", Name: "W.P.Dineth Nethmika", Maths: "Absent", Physics: "40", Chemistry: "Absent", ICT: "N/A", Z_maths: "N/A", Z_phy: "0.0054826207010912949", Z_Chem: "N/A", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" },
+            { Index_number: "32159", Name: "Ranuji  Dharmasooriya", Maths: "Absent", Physics: "31", Chemistry: "19", ICT: "N/A", Z_maths: "N/A", Z_phy: "-0.46679519619994758", Z_Chem: "-1.0264888494609277", Z_ICT: "", Z_score: "Not Calculated", SecRank: "125", ClassRank: "24", Stream: "Physical Science" }
+        ];
+
+        // DOM elements
+        const loginSection = document.getElementById('loginSection');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginMessage = document.getElementById('loginMessage');
+        const teacherDashboard = document.getElementById('teacherDashboard');
+
+        const studentIndexInput = document.getElementById('studentIndexInput');
+        const lookupResultBtn = document.getElementById('lookupResultBtn');
+        const studentLookupMessage = document.getElementById('studentLookupMessage');
+
+        const studentTableBody = document.getElementById('studentTableBody');
+        const searchInput = document.getElementById('searchInput');
+        const streamFilter = document.getElementById('streamFilter');
+
+        const studentDetailModal = document.getElementById('studentDetailModal');
+        const modalStudentName = document.getElementById('modalStudentName');
+        const modalStudentDetails = document.getElementById('modalStudentDetails');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        const analysisSummary = document.getElementById('analysisSummary');
+        const subjectAveragesChart = document.getElementById('subjectAveragesChart');
+        const streamDistributionChart = document.getElementById('streamDistributionChart');
+        const topPerformersList = document.getElementById('topPerformersList');
+
+        // Global variables to store calculated averages and stream data for charts
+        let _calculatedAverages = {
+            maths: 'N/A', physics: 'N/A', chemistry: 'N/A', ict: 'N/A', zScore: 'N/A'
+        };
+        let _streamDistributionData = [];
+
+
+        // Authentication details (hardcoded for demonstration)
+        const TEACHER_USERNAME = 'teacher_admin'; // Updated username
+        const TEACHER_PASSWORD = 'SecureP@ss2026!'; // Updated strong password
+
+        /**
+         * Parses a numeric string, handling 'Absent', 'N/A', 'Exclude' and empty strings.
+         * Returns a number or null if parsing fails.
+         * @param {string} value - The string value to parse.
+         * @returns {number|null} - The parsed number or null.
+         */
+        function parseNumericValue(value) {
+            if (value === 'Absent' || value === 'N/A' || value === 'Exclude' || value === null || value.trim() === '') {
+                return null;
+            }
+            const num = parseFloat(value);
+            return isNaN(num) ? null : num;
+        }
+
+        /**
+         * Converts numerical marks to grades.
+         * @param {string} marks - The numerical mark as a string or "Absent"/"N/A".
+         * @returns {string} The corresponding grade ('A', 'B', 'C', 'S', 'F', or original string if not a number).
+         */
+        function getGrade(marks) {
+            const numMarks = parseNumericValue(marks);
+            if (numMarks === null) {
+                return marks; // Return "Absent" or "N/A" as is
+            }
+            if (numMarks > 75) {
+                return 'A';
+            } else if (numMarks >= 65 && numMarks <= 74) {
+                return 'B';
+            } else if (numMarks >= 50 && numMarks <= 64) {
+                return 'C';
+            } else if (numMarks >= 35 && numMarks <= 49) {
+                return 'S';
+            } else {
+                return 'F';
+            }
+        }
+
+        /**
+         * Formats the Z-Score for display.
+         * Replaces 'Exclude' or 'Not Calculated' with a user-friendly string.
+         * @param {string} zScore - The raw Z-Score value.
+         * @returns {string} - The formatted Z-Score.
+         */
+        function formatZScore(zScore) {
+            const parsedZScore = parseNumericValue(zScore);
+            if (parsedZScore === null) {
+                return 'N/A';
+            }
+            return parsedZScore.toFixed(4); // Format to 4 decimal places
+        }
+
+        /**
+         * Renders the student data into the table.
+         * @param {Array<Object>} studentsToDisplay - The array of student objects to render.
+         */
+        function renderStudents(studentsToDisplay) {
+            studentTableBody.innerHTML = ''; // Clear existing rows
+            if (studentsToDisplay.length === 0) {
+                // Display a message if no students match the filter/search
+                const noDataRow = document.createElement('tr');
+                noDataRow.innerHTML = `<td colspan="9" class="px-4 py-4 whitespace-nowrap text-center text-gray-500">No matching students found.</td>`;
+                studentTableBody.appendChild(noDataRow);
+                return;
+            }
+
+            studentsToDisplay.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 cursor-pointer transition duration-150 ease-in-out';
+                row.innerHTML = `
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 rounded-l-lg">${student.Index_number}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${student.Name}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${getGrade(student.Maths)}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${getGrade(student.Physics)}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${getGrade(student.Chemistry)}</td>
+                    <td class="px-4 py-4 whitespace-now猛text-sm text-gray-700">${getGrade(student.ICT)}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${formatZScore(student.Z_score)}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">${student.ClassRank}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700 rounded-r-lg">${student.SecRank}</td>
+                `;
+                row.addEventListener('click', () => showStudentDetail(student));
+                studentTableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Filters and renders the student data based on search input and stream filter.
+         */
+        function filterStudents() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedStream = streamFilter.value;
+
+            const filteredStudents = studentData.filter(student => {
+                const matchesSearch = student.Index_number.toLowerCase().includes(searchTerm) ||
+                                      student.Name.toLowerCase().includes(searchTerm);
+                const matchesStream = selectedStream === '' || student.Stream === selectedStream;
+                return matchesSearch && matchesStream;
+            });
+
+            renderStudents(filteredStudents);
+        }
+
+        /**
+         * Displays a modal with detailed information about a selected student.
+         * @param {Object} student - The student object to display.
+         */
+        function showStudentDetail(student) {
+            modalStudentName.textContent = student.Name; // Now this is just the student's name
+            // Enhanced modal content with grades and attractive styling
+            let detailsHtml = `
+                <div class="space-y-3 p-4 bg-gray-50 rounded-lg">
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Index Number:</span>
+                        <span class="font-bold text-gray-900">${student.Index_number}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Maths:</span>
+                        <span class="font-bold text-lg ${getGradeColor(student.Maths)}">${getGrade(student.Maths)}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Physics:</span>
+                        <span class="font-bold text-lg ${getGradeColor(student.Physics)}">${getGrade(student.Physics)}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Chemistry:</span>
+                        <span class="font-bold text-lg ${getGradeColor(student.Chemistry)}">${getGrade(student.Chemistry)}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>ICT:</span>
+                        <span class="font-bold text-lg ${getGradeColor(student.ICT)}">${getGrade(student.ICT)}</span>
+                    </p>
+                    <hr class="border-gray-200 my-2">
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Overall Z-Score:</span>
+                        <span class="font-bold text-indigo-700">${formatZScore(student.Z_score)}</span>
+                    </p>
+                    <hr class="border-gray-200 my-2">
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Section Rank:</span>
+                        <span class="font-semibold text-gray-800">${student.SecRank}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Class Rank:</span>
+                        <span class="font-semibold text-gray-800">${student.ClassRank}</span>
+                    </p>
+                    <p class="flex justify-between items-center text-sm font-medium text-gray-700">
+                        <span>Stream:</span>
+                        <span class="font-semibold text-gray-800">${student.Stream}</span>
+                    </p>
+                </div>
+            `;
+            modalStudentDetails.innerHTML = detailsHtml;
+            studentDetailModal.classList.remove('hidden'); // Show the modal
+        }
+
+        /**
+         * Returns Tailwind CSS class for grade color.
+         * @param {string} marks - The numerical mark as a string or "Absent"/"N/A".
+         * @returns {string} Tailwind color class.
+         */
+        function getGradeColor(marks) {
+            const grade = getGrade(marks);
+            switch(grade) {
+                case 'A': return 'text-green-600';
+                case 'B': return 'text-blue-600';
+                case 'C': return 'text-yellow-600';
+                case 'S': return 'text-orange-600';
+                case 'F': return 'text-red-600';
+                default: return 'text-gray-500'; // For Absent/N/A
+            }
+        }
+
+        /**
+         * Hides the student detail modal.
+         */
+        function hideStudentDetail() {
+            studentDetailModal.classList.add('hidden'); // Hide the modal
+        }
+
+        /**
+         * Handles student result lookup by index number.
+         */
+        function handleStudentLookup() {
+            const indexToLookup = studentIndexInput.value.trim();
+            studentLookupMessage.textContent = ''; // Clear previous messages
+
+            if (!indexToLookup) {
+                studentLookupMessage.textContent = 'Please enter an index number.';
+                return;
+            }
+
+            const foundStudent = studentData.find(s => s.Index_number === indexToLookup);
+
+            if (foundStudent) {
+                showStudentDetail(foundStudent);
+            } else {
+                studentLookupMessage.textContent = 'Student not found with this index number.';
+            }
+        }
+
+        /**
+         * Calculates and displays overall marks analysis.
+         */
+        function calculateAndDisplayAnalysis() {
+            let totalMaths = 0, countMaths = 0;
+            let totalPhysics = 0, countPhysics = 0;
+            let totalChemistry = 0, countChemistry = 0;
+            let totalICT = 0, countICT = 0;
+            let totalZScore = 0, countZScore = 0;
+
+            const streams = {}; // To count students per stream
+
+            studentData.forEach(student => {
+                const mathsScore = parseNumericValue(student.Maths);
+                if (mathsScore !== null) {
+                    totalMaths += mathsScore;
+                    countMaths++;
+                }
+                const physicsScore = parseNumericValue(student.Physics);
+                if (physicsScore !== null) {
+                    totalPhysics += physicsScore;
+                    countPhysics++;
+                }
+                const chemistryScore = parseNumericValue(student.Chemistry);
+                if (chemistryScore !== null) {
+                    totalChemistry += chemistryScore;
+                    countChemistry++;
+                }
+                const ictScore = parseNumericValue(student.ICT);
+                if (ictScore !== null) {
+                    totalICT += ictScore;
+                    countICT++;
+                }
+                const zScore = parseNumericValue(student.Z_score);
+                if (zScore !== null) {
+                    totalZScore += zScore;
+                    countZScore++;
+                }
+
+                // Count students per stream
+                if (student.Stream) {
+                    streams[student.Stream] = (streams[student.Stream] || 0) + 1;
+                }
+            });
+
+            _calculatedAverages.maths = countMaths > 0 ? (totalMaths / countMaths).toFixed(2) : 'N/A';
+            _calculatedAverages.physics = countPhysics > 0 ? (totalPhysics / countPhysics).toFixed(2) : 'N/A';
+            _calculatedAverages.chemistry = countChemistry > 0 ? (totalChemistry / countChemistry).toFixed(2) : 'N/A';
+            _calculatedAverages.ict = countICT > 0 ? (totalICT / countICT).toFixed(2) : 'N/A';
+            _calculatedAverages.zScore = countZScore > 0 ? (totalZScore / countZScore).toFixed(4) : 'N/A';
+
+            analysisSummary.innerHTML = `
+                <div class="p-3 bg-white rounded-md shadow-sm">
+                    <p class="text-sm font-semibold text-gray-600">Avg. Maths</p>
+                    <p class="text-lg font-bold text-indigo-700">${_calculatedAverages.maths}</p>
+                </div>
+                <div class="p-3 bg-white rounded-md shadow-sm">
+                    <p class="text-sm font-semibold text-gray-600">Avg. Physics</p>
+                    <p class="text-lg font-bold text-indigo-700">${_calculatedAverages.physics}</p>
+                </div>
+                <div class="p-3 bg-white rounded-md shadow-sm">
+                    <p class="text-sm font-semibold text-gray-600">Avg. Chemistry</p>
+                    <p class="text-lg font-bold text-indigo-700">${_calculatedAverages.chemistry}</p>
+                </div>
+                <div class="p-3 bg-white rounded-md shadow-sm">
+                    <p class="text-sm font-semibold text-gray-600">Avg. ICT</p>
+                    <p class="text-lg font-bold text-indigo-700">${_calculatedAverages.ict}</p>
+                </div>
+                <div class="p-3 bg-white rounded-md shadow-sm col-span-full">
+                    <p class="text-sm font-semibold text-gray-600">Overall Avg. Z-Score</p>
+                    <p class="text-lg font-bold text-indigo-700">${_calculatedAverages.zScore}</p>
+                </div>
+            `;
+
+            drawSubjectAveragesChart([
+                { subject: 'Maths', average: parseNumericValue(_calculatedAverages.maths) },
+                { subject: 'Physics', average: parseNumericValue(_calculatedAverages.physics) },
+                { subject: 'Chemistry', average: parseNumericValue(_calculatedAverages.chemistry) },
+                { subject: 'ICT', average: parseNumericValue(_calculatedAverages.ict) }
+            ]);
+
+            _streamDistributionData = Object.keys(streams).map(stream => ({
+                stream: stream,
+                count: streams[stream]
+            }));
+            drawStreamDistributionChart(_streamDistributionData);
+            displayTopPerformers(); // Call the new function to display top performers
+
+             // Populate stream filter dropdown dynamically
+             const existingStreams = new Set(studentData.map(s => s.Stream).filter(Boolean));
+             streamFilter.innerHTML = '<option value="">All Streams</option>';
+             existingStreams.forEach(stream => {
+                 const option = document.createElement('option');
+                 option.value = stream;
+                 option.textContent = stream;
+                 streamFilter.appendChild(option);
+             });
+        }
+
+        /**
+         * Draws a bar chart for subject averages using D3.js.
+         * @param {Array<Object>} data - An array of objects with 'subject' and 'average' properties.
+         */
+        function drawSubjectAveragesChart(data) {
+            // Clear existing SVG
+            d3.select("#subjectAveragesChart").select("svg").remove();
+
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+            const containerWidth = subjectAveragesChart.clientWidth;
+            const containerHeight = subjectAveragesChart.clientHeight;
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            const svg = d3.select("#subjectAveragesChart")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Filter out null averages and sort for consistent display
+            const validData = data.filter(d => d.average !== null);
+
+            if (validData.length === 0) {
+                svg.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height / 2)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#6b7280")
+                    .text("No data available for this chart.");
+                return;
+            }
+
+            // X scale
+            const x = d3.scaleBand()
+                .range([0, width])
+                .domain(validData.map(d => d.subject))
+                .padding(0.2);
+
+            // Y scale
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(validData, d => d.average) || 100]) // Max score or 100
+                .range([height, 0]);
+
+            // X axis
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                .attr("transform", "translate(-10,0)rotate(-45)")
+                .style("text-anchor", "end");
+
+            // Y axis
+            svg.append("g")
+                .call(d3.axisLeft(y));
+
+            // Bars
+            svg.selectAll("myBar")
+                .data(validData)
+                .enter()
+                .append("rect")
+                .attr("x", d => x(d.subject))
+                .attr("y", d => y(d.average))
+                .attr("width", x.bandwidth())
+                .attr("height", d => height - y(d.average))
+                .attr("fill", "#38b2ac") // Tailwind teal-400
+                .attr("rx", 5) // Rounded corners for bars
+                .attr("ry", 5);
+
+            // Add value labels on top of bars
+            svg.selectAll(".bar-label")
+                .data(validData)
+                .enter()
+                .append("text")
+                .attr("class", "bar-label")
+                .attr("x", d => x(d.subject) + x.bandwidth() / 2)
+                .attr("y", d => y(d.average) - 5) // Position above the bar
+                .attr("text-anchor", "middle")
+                .attr("fill", "#4b5563")
+                .style("font-size", "0.75rem")
+                .text(d => d.average.toFixed(2));
+        }
+
+        /**
+         * Draws a pie chart for stream distribution using D3.js.
+         * @param {Array<Object>} data - An array of objects with 'stream' and 'count' properties.
+         */
+        function drawStreamDistributionChart(data) {
+            // Clear existing SVG
+            d3.select("#streamDistributionChart").select("svg").remove();
+
+            const containerWidth = streamDistributionChart.clientWidth;
+            const containerHeight = streamDistributionChart.clientHeight;
+            const radius = Math.min(containerWidth, containerHeight) / 2 - 20; // Adjusted for padding
+
+            const svg = d3.select("#streamDistributionChart")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${containerWidth / 2},${containerHeight / 2})`);
+
+            // Set up the color scale
+            const color = d3.scaleOrdinal()
+                .domain(data.map(d => d.stream))
+                .range(d3.schemeCategory10); // D3's built-in color scheme
+
+            // Compute the position of each slice on the pie and generate the arc path
+            const pie = d3.pie()
+                .value(d => d.count);
+            const arc = d3.arc()
+                .innerRadius(radius * 0.6) // Creates a donut chart
+                .outerRadius(radius);
+            const outerArc = d3.arc()
+                .innerRadius(radius * 0.9)
+                .outerRadius(radius * 0.9);
+
+            if (data.length === 0 || data.every(d => d.count === 0)) {
+                svg.append("text")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#6b7280")
+                    .text("No data available for this chart.");
+                return;
+            }
+
+
+            // Build the pie chart
+            svg.selectAll('allSlices')
+                .data(pie(data))
+                .enter()
+                .append('path')
+                .attr('d', arc)
+                .attr('fill', d => color(d.data.stream))
+                .attr("stroke", "white")
+                .style("stroke-width", "2px")
+                .style("opacity", 0.7);
+
+            // Add the polylines between chart and labels:
+            svg.selectAll('allPolylines')
+                .data(pie(data))
+                .enter()
+                .append('polyline')
+                .attr("stroke", "black")
+                .style("fill", "none")
+                .attr("stroke-width", 1)
+                .attr('points', function(d) {
+                    const posA = arc.centroid(d); // arc centroid for the beginning of the polyline
+                    const posB = outerArc.centroid(d); // arc centroid for the end of the polyline
+                    const posC = outerArc.centroid(d); // For the text anchor point
+                    const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    posC[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1); // x position
+                    return [posA, posB, posC];
+                });
+
+            // Add the text labels
+            svg.selectAll('allLabels')
+                .data(pie(data))
+                .enter()
+                .append('text')
+                .text(d => `${d.data.stream} (${d.data.count})`)
+                .attr('transform', function(d) {
+                    const pos = outerArc.centroid(d);
+                    const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    pos[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1);
+                    return `translate(${pos})`;
+                })
+                .style('text-anchor', function(d) {
+                    const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    return (midangle < Math.PI ? 'start' : 'end');
+                })
+                .attr("fill", "#4b5563")
+                .style("font-size", "0.75rem");
+        }
+
+        /**
+         * Displays the top 3 performers in each stream based on Z-Score.
+         */
+        function displayTopPerformers() {
+            const studentsByStream = {};
+
+            // Group students by stream and filter out invalid Z-scores
+            studentData.forEach(student => {
+                const zScore = parseNumericValue(student.Z_score);
+                if (zScore !== null && student.Stream) {
+                    if (!studentsByStream[student.Stream]) {
+                        studentsByStream[student.Stream] = [];
+                    }
+                    studentsByStream[student.Stream].push({
+                        name: student.Name,
+                        index: student.Index_number,
+                        zScore: zScore
+                    });
+                }
+            });
+
+            let topPerformersHtml = '';
+            for (const stream in studentsByStream) {
+                // Sort students by Z-Score in descending order
+                const sortedStudents = studentsByStream[stream].sort((a, b) => b.zScore - a.zScore);
+                const top3 = sortedStudents.slice(0, 3);
+
+                topPerformersHtml += `
+                    <div class="p-4 bg-white rounded-md shadow-sm border border-yellow-200">
+                        <h4 class="text-md font-bold text-yellow-800 mb-2">${stream}</h4>
+                        <ul class="list-disc list-inside text-left text-gray-700 space-y-1">
+                `;
+                if (top3.length > 0) {
+                    top3.forEach((student, index) => {
+                        topPerformersHtml += `
+                            <li>
+                                <span class="font-semibold">${index + 1}. ${student.name}</span>
+                                (Index: ${student.index}, Z-Score: ${student.zScore.toFixed(4)})
+                            </li>
+                        `;
+                    });
+                } else {
+                    topPerformersHtml += `<li>No top performers for this stream.</li>`;
+                }
+                topPerformersHtml += `
+                        </ul>
+                    </div>
+                `;
+            }
+            topPerformersList.innerHTML = topPerformersHtml;
+        }
+
+
+        // Event Listeners
+        loginBtn.addEventListener('click', () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            if (username === TEACHER_USERNAME && password === TEACHER_PASSWORD) {
+                loginSection.classList.add('hidden');
+                teacherDashboard.classList.remove('hidden');
+                loginMessage.textContent = '';
+                calculateAndDisplayAnalysis(); // Load analysis and charts after successful login
+                filterStudents(); // Initial render of table for teacher dashboard
+                displayTopPerformers(); // Display top performers on login
+            } else {
+                loginMessage.textContent = 'Invalid username or password.';
+            }
+        });
+
+        lookupResultBtn.addEventListener('click', handleStudentLookup);
+        searchInput.addEventListener('input', filterStudents);
+        streamFilter.addEventListener('change', filterStudents);
+        closeModalBtn.addEventListener('click', hideStudentDetail);
+        studentDetailModal.addEventListener('click', (e) => {
+            // Close modal if clicked outside the content area
+            if (e.target === studentDetailModal) {
+                hideStudentDetail();
+            }
+        });
+
+        // Initial rendering logic
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initially render the table for the teacher dashboard (it will be hidden until login)
+            // This ensures that the table is populated when the dashboard becomes visible.
+            filterStudents();
+        });
+
+        // Add a resize observer to redraw charts when the container resizes
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if (entry.target.id === 'subjectAveragesChart') {
+                    // Use the globally stored calculated averages directly
+                    const data = [
+                        { subject: 'Maths', average: parseNumericValue(_calculatedAverages.maths) },
+                        { subject: 'Physics', average: parseNumericValue(_calculatedAverages.physics) },
+                        { subject: 'Chemistry', average: parseNumericValue(_calculatedAverages.chemistry) },
+                        { subject: 'ICT', average: parseNumericValue(_calculatedAverages.ict) }
+                    ];
+                    drawSubjectAveragesChart(data);
+                }
+                if (entry.target.id === 'streamDistributionChart') {
+                    // Use the globally stored stream distribution data directly
+                    drawStreamDistributionChart(_streamDistributionData);
+                }
+            }
+        });
+
+        resizeObserver.observe(subjectAveragesChart);
+        resizeObserver.observe(streamDistributionChart);
+
+    </script>
+</body>
+</html>
